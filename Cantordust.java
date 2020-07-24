@@ -35,6 +35,10 @@ public class Cantordust extends GhidraScript {
     protected void run() throws Exception {
         currentDirectory = sourceFile.getAbsolutePath();
         currentDirectory = currentDirectory.substring(0, currentDirectory.length()-15);
+        if(currentProgram==null){
+            printf("Open a file to examine with CantorDust before continuing!\n");
+            return;
+        }
         name = currentProgram.getName();
         writeBinLocation();
         JFrame frame = new JFrame(String.format("..cantor.dust..    :   %s", name));

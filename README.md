@@ -1,7 +1,14 @@
 # Cantordust-Ghidra 
-CantorDuust is a binary visulization tool used to aid reverse engineering efforts. It allows humans to utilize their superior visual pattern recognition to identify patterns in binary data.
+
+![CantorDust Bitmap Visualization](./resources/examplePic2Tuple/bitmap_2tup.png) 
+
+![CantorDust Code Visualization](./resources/examplePic2Tuple/armv5l.png)
+
+CantorDust is a binary visulization tool used to aid reverse engineering efforts. It allows humans to utilize their superior visual pattern recognition to identify patterns in binary data.
 
 CantorDust (then ..cantor.dust..) was originally created by Chris Domas (xoreaxeaxeax), with funding from Battelle. The Ghidra plugin version of CantorDust was primarily developed by Battelle interns AJ Snedden and Mike Senglemann with funding from Battelle. 
+
+Take a look at [this blogpost](https://inside.battelle.org/blog-details/battelle-publishes-open-source-binary-visualization-tool) to learn more about the algorithms and history behind this tool.
 
 **Cantordust is dependent on Ghidra version 9.1 or higher**
 
