@@ -100,7 +100,7 @@ class BitMapSliderUI extends RangeSliderUI {
 
         // Calculate width and height
         int width = 400;
-        int height = (high-low)/width-1;
+        int height = (high-low)/width-1 > 0? (high-low)/width-1 : 1;
 
         // Create a new image
         img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -109,7 +109,8 @@ class BitMapSliderUI extends RangeSliderUI {
         // Populate the image
         for(int y=0; y < img.getHeight(); y++) {
             for(int x=0; x < img.getWidth(); x++) {
-                img.setRGB(x, y, (new Color(0, data[count++] & 0xff, 0)).getRGB());
+                count = count+1 < data.length-1? count+1 : data.length-1;
+                img.setRGB(x, y, (new Color(0, data[count] & 0xff, 0)).getRGB());
             }
         }
 
