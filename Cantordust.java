@@ -1,3 +1,8 @@
+// CantorDust
+// @author Battelle Memorial Institute
+// @category Binary Visualization
+// @keybinding alt C
+// @toolbar resources/icons/icon.png
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
