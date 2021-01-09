@@ -45,7 +45,6 @@ public class Cantordust extends GhidraScript {
             return;
         }
         name = currentProgram.getName();
-        writeBinLocation();
         JFrame frame = new JFrame(String.format("..cantor.dust..    :   %s", name));
         mainInterface = new MainInterface(getData(), this, frame);
         frame.getContentPane().add(mainInterface);
@@ -123,17 +122,6 @@ public class Cantordust extends GhidraScript {
         return data;
     }
 
-    public void writeBinLocation(){ // run python cleanup.py to recompile program
-        GhidraProvider mp = new GhidraProvider();
-        String path = mp.getClass(sourceFile, "Cantordust").getAbsolutePath();
-        path = path.substring(0, path.length()-16);
-        String fileName = currentDirectory+"ghidra_bin_location.txt";
-        try{
-            OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(fileName), StandardCharsets.UTF_8);
-            writer.write(path);
-            writer.close();
-        }catch(IOException e){}
-    }
     /**
      * Gets the current selected address in Ghidra
      */
