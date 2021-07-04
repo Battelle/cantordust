@@ -6,7 +6,7 @@ public class GhidraProvider extends JavaScriptProvider {
     public GhidraProvider(){
         super();
     }
-    public File getClass(ResourceFile sourceFile, String className){
-        return getClassFile(sourceFile, className);
+    public File getClass(ResourceFile sourceFile){
+        return sourceFile.getFile(false);
         }
 }
