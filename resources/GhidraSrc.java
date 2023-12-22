@@ -1,5 +1,6 @@
 package resources;
 
+import org.apache.commons.lang3.SystemUtils;
 import ghidra.app.script.GhidraScript;
 import ghidra.app.util.exporter.BinaryExporter;
 import ghidra.app.util.exporter.ExporterException;
@@ -115,7 +116,7 @@ public class GhidraSrc extends GhidraScript{
 
     public byte[] getJavaData() {
         String path = currentProgram.getExecutablePath();
-        if(System.getProperty("os.name").equals("Windows 10") && (path.charAt(0) == '\\' || path.charAt(0) == '/')) {
+        if(SystemUtils.IS_OS_WINDOWS && (path.charAt(0) == '\\' || path.charAt(0) == '/')) {
             path = path.substring(1);
         }
         Path path_p = Paths.get(path);
