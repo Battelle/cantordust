@@ -15,7 +15,6 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JSlider;
@@ -31,10 +30,17 @@ public class BitMapVisualizer extends Visualizer {
     private JButton dataOffsetUpButton;
     private JButton dataMicroUpButton;
     private int mode;
+    private OffsetJump jump;
+    /**
+     * Geometry of the last image built, so a click can be turned back into a
+     * file offset. This map is linear, so the pixel position is the offset -
+     * no searching needed, unlike the tuple plots.
+     */
+    private int lastCols, lastRows, lastStep, lastLow, lastShift;
 
     private Image img;
 
-    public BitMapVisualizer(int windowSize, GhidraSrc cantordust, JFrame frame) {
+    public BitMapVisualizer(int windowSize, GhidraSrc cantordust) {
         super(windowSize, cantordust);
         MainInterface mainInterface = cantordust.getMainInterface();
         dataWidthSlider = mainInterface.widthSlider;
@@ -46,7 +52,7 @@ public class BitMapVisualizer extends Visualizer {
         dataMicroUpButton = mainInterface.microUpButton;
         mode = 0;
         this.img = new BufferedImage(1,1,1);
-        createPopupMenu(frame);
+        createPopupMenu();
 
         dataMacroSlider.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
@@ -109,17 +115,13 @@ public class BitMapVisualizer extends Visualizer {
             }
         });
 
-        // Wait for the window to be loaded before building an image
-        new Thread(() -> {
-            while(this.getVisibleRect().getWidth() == 0) {
-            	// Wait for the window to be loaded
-            }
-
-            constructImage();
-        }).start();
+        // The first build is driven by componentResized above, which fires once
+        // the panel is laid out. This used to be a thread spinning on
+        // getVisibleRect().getWidth() == 0, which burned a whole core until the
+        // window appeared.
     }
     
-    public void createPopupMenu(JFrame frame){
+    public void createPopupMenu(){
         JPopupMenu popup = new JPopupMenu("test1");
         JMenuItem bpp_8 = new JMenuItem("8bpp");
         bpp_8.addActionListener(new ActionListener() {
@@ -169,14 +171,51 @@ public class BitMapVisualizer extends Visualizer {
         this.addMouseListener(new MouseAdapter() {  
             public void mouseReleased(MouseEvent e) {  
                 if(e.getButton() == 3){
-                    popup.show(frame, BitMapVisualizer.this.getX() + e.getX(), BitMapVisualizer.this.getY() + e.getY());
+                    popup.show(BitMapVisualizer.this, e.getX(), e.getY());
                 }
-            }                 
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if(e.getButton() == MouseEvent.BUTTON1){
+                    jumpToPixel(e.getX(), e.getY());
+                }
+            }
         });  
 
         this.add(popup);
     }
         
+    /**
+     * Every pixel of a linear map is a known run of bytes, so a click resolves
+     * to one offset directly.
+     */
+    private void jumpToPixel(int mx, int my) {
+        int cols, rows, step, low, shift;
+        synchronized(this) {
+            cols = lastCols; rows = lastRows; step = lastStep; low = lastLow; shift = lastShift;
+        }
+        int w = getWidth(), h = getHeight();
+        if(cols <= 0 || rows <= 0 || w <= 0 || h <= 0) {
+            return;
+        }
+        int bx = mx * cols / w;
+        int by = my * rows / h;
+        if(bx < 0 || bx >= cols || by < 0 || by >= rows) {
+            return;
+        }
+        byte[] data = mainInterface.getData();
+        long offset = (long) low + (long)(by * cols + bx) * step + shift;
+        if(offset < 0 || offset >= data.length) {
+            return;
+        }
+        if(jump == null) {
+            jump = new OffsetJump(cantordust);
+        }
+        mainInterface.setStatus(jump.toOffset(offset,
+                String.format("%02X", data[(int) offset] & 0xff)));
+    }
+
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -192,8 +231,10 @@ public class BitMapVisualizer extends Visualizer {
     }
 
     private void constructImage() {
-        dataMicroSlider.setMinimum(dataMacroSlider.getValue());
-        dataMicroSlider.setMaximum(dataMacroSlider.getUpperValue());
+        // MainInterface nests the micro range inside the macro one as a single
+        // atomic model update; a visualizer that also moved the bounds - from a
+        // paint or a worker thread, as this did - fights that and re-fires the
+        // listener that asked for this redraw.
         int low = dataMicroSlider.getValue();
         int high = dataMicroSlider.getUpperValue();
         int width = dataWidthSlider.getValue();
@@ -206,7 +247,12 @@ public class BitMapVisualizer extends Visualizer {
         int x = 0;
         int i = 0;
 
-        Rectangle window = getVisibleRect();
+        // Size from the component, not its visible rectangle: the two agree in a
+        // free-floating window but not once the panel is docked.
+        Rectangle window = new Rectangle(0, 0, getWidth(), getHeight());
+        if(window.width <= 0 || window.height <= 0) {
+            return;
+        }
 
         // offset comes from a slider capped at 255, so it can exceed the length of
         // a small file. Clamping keeps the shift loops from running with a negative
@@ -314,6 +360,16 @@ public class BitMapVisualizer extends Visualizer {
                 }
                 g.dispose();
             }
+        // Remember how this image was laid out; a click maps back through it.
+        int step = (mode == 1) ? 4 : (mode == 2) ? 3 : (mode == 3) ? 2 : 1;
+        synchronized(this) {
+            lastCols = xMax;
+            lastRows = bimg.getHeight();
+            lastStep = step;
+            lastLow = low;
+            lastShift = shift;
+        }
+
         // Scale the image
         this.img = bimg.getScaledInstance((int) window.getWidth(), (int) window.getHeight(), Image.SCALE_SMOOTH);
         repaint();

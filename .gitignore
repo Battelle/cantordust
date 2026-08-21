@@ -1,3 +1,13 @@
 .DS_Store
 ghidra_bin_location.txt
 .vscode
+
+# Training samples downloaded to build classifier templates, and the scripts
+# that fetch them and turn them into templates. The templates themselves are
+# committed; the tooling is kept out of the repository because it does not
+# reproduce the templates that came from the original C# tool - it builds
+# workable ones for classes that have none, which is a different thing.
+samples/
+make_template.py
+fetch_samples.py
+__pycache__/

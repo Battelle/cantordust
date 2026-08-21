@@ -14,7 +14,6 @@ import ghidra.program.model.mem.MemoryBlockSourceInfo;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.database.mem.FileBytes;
 
-import javax.swing.JFrame;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,15 +24,10 @@ public class GhidraSrc extends GhidraScript{
     public MainInterface mainInterface;
     public String currentDirectory;
     public String name;
-    public JFrame frame;
     private boolean DEBUG = false;
 
-    public ClassifierModel classifier;
-    public boolean classifierInitialized = false;
-
-    public GhidraSrc(){
-        this.frame = new JFrame();
-    }
+    public volatile ClassifierModel classifier;
+    public volatile boolean classifierInitialized = false;
 
     protected void run() throws Exception {
     }
@@ -242,12 +236,27 @@ public class GhidraSrc extends GhidraScript{
 		return false;
     }
 
-    public void initiateClassifier() {
-        if(!classifierInitialized) {
-            classifier = new ClassifierModel(this, ClassifierModel.DEFAULT_GRAMS);
-            classifier.initialize();
-            classifierInitialized = true;
+    /**
+     * Builds the classifier if it has not been built. Takes seconds and must not
+     * be called from the event thread; MetricMap runs it on a worker.
+     * Synchronized so two menu clicks cannot start two builds.
+     */
+    public synchronized void initiateClassifier() {
+        if(classifierInitialized) {
+            return;
         }
+        ClassifierModel model = new ClassifierModel(this, ClassifierModel.DEFAULT_GRAMS);
+        // Published only once it is usable, so getClassifier never hands back a
+        // half-trained model.
+        model.initialize();
+        classifier = model;
+        classifierInitialized = true;
+    }
+
+    /** True once the classifier is built and every block has a label. */
+    public boolean isClassifierReady() {
+        ClassifierModel c = classifier;
+        return c != null && c.isReady();
     }
 
     public ClassifierModel getClassifier() {

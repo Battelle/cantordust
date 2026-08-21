@@ -9,6 +9,8 @@ import java.awt.event.*;
 import java.util.HashMap;
 import java.awt.image.*;
 import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Rectangle;
 
 public class MetricMap extends Visualizer{
     protected byte[] data;
@@ -23,29 +25,34 @@ public class MetricMap extends Visualizer{
     protected String type_plot = "square";
     protected ColorSource csource;
     private JSlider dataWidthSlider;
-    private JLabel label;
+    /** The curve at its own resolution; scaled to the panel when painted. */
+    private BufferedImage mapImage;
+    /** Where mapImage was last drawn, so a click can be mapped back to a cell. */
+    private final Rectangle mapBounds = new Rectangle();
     private boolean isClassifier = false;
+    private final java.util.concurrent.atomic.AtomicBoolean classifierBuilding =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
 
-    public MetricMap(int windowSize, GhidraSrc cantordust, JFrame frame, Boolean isCurrentView) {
+    public MetricMap(int windowSize, GhidraSrc cantordust) {
         super(windowSize, cantordust);
         data = this.cantordust.getMainInterface().getData();
         dataWidthSlider = this.cantordust.getMainInterface().widthSlider;
-        createPopupMenu(frame);
+        createPopupMenu();
         sliderConfig();
-        mouseConfig(frame, isCurrentView);
+        mouseConfig();
         this.csource = new ColorEntropy(this.cantordust, getCurrentData());
         this.map = new Hilbert(this.cantordust, 2, (int)(Math.log(getWindowSize())/Math.log(2)));
         draw();
     }
     
     // Special constructor for initialization of plugin
-    public MetricMap(int windowSize, GhidraSrc cantordust, MainInterface mainInterface, JFrame frame, Boolean isCurrentView) {
+    public MetricMap(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
         super(windowSize, cantordust, mainInterface);
         data = mainInterface.getData();
         dataWidthSlider = mainInterface.widthSlider;
-        createPopupMenu(frame);
+        createPopupMenu();
         sliderConfig();
-        mouseConfig(frame, isCurrentView);
+        mouseConfig();
         this.csource = new ColorEntropy(this.cantordust, getCurrentData());
         this.map = new Hilbert(this.cantordust, 2, (int)(Math.log(getWindowSize())/Math.log(2)));
         draw();
@@ -110,7 +117,7 @@ public class MetricMap extends Visualizer{
         });
     }
 
-    public void mouseConfig(JFrame frame, boolean isCurrentView){
+    public void mouseConfig(){
         addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
@@ -121,10 +128,8 @@ public class MetricMap extends Visualizer{
                     if(popupAddr != null) {
                         popupAddr.hide();
                     }
-                    if(e.getX() < size_hilbert && e.getY() < size_hilbert){
-                        if(e.getX() >= 0 && e.getY() >= 0){
-                            mousePressed(e);
-                        }
+                    if(toMapPoint(e.getX(), e.getY()) != null){
+                        mousePressed(e);
                     }
                 }
             }
@@ -143,16 +148,20 @@ public class MetricMap extends Visualizer{
                 int b2 = MouseEvent.BUTTON2_DOWN_MASK;
                 if ((e.getModifiersEx() & (b1 | b2)) == b1) {
                     JPanel bv = MetricMap.this;
-                    JFrame metricMap = frame;
+                    if(!bv.isShowing()){
+                        return;
+                    }
                     int x_point=e.getX();
                     int y_point=e.getY();
-                    int xf = metricMap.getX()+x_point;
-                    int yf = metricMap.getY()+y_point;
-                    if(isCurrentView){
-                        xf = (int)bv.getLocationOnScreen().getX()+x_point;
-                        yf = (int)bv.getLocationOnScreen().getY()+y_point-26;
+                    // PopupFactory wants screen coordinates. Asking the panel where
+                    // it is on screen works whether this window is floating or
+                    // docked into the Ghidra tool.
+                    int xf = (int)bv.getLocationOnScreen().getX()+x_point;
+                    int yf = (int)bv.getLocationOnScreen().getY()+y_point;
+                    TwoIntegerTuple p = toMapPoint(x_point, y_point);
+                    if(p == null){
+                        return;
                     }
-                    TwoIntegerTuple p = new TwoIntegerTuple(x_point, y_point);
                     int currentLow = dataMicroSlider.getValue();
                     int loc = map.index(p);
                     // The map is rebuilt on a background thread, so a click can land
@@ -170,8 +179,12 @@ public class MetricMap extends Visualizer{
                     String currentAddress = Long.toHexString(minGhidraAddress+(long)memoryLocation).toUpperCase();
                     JLabel l;
                     if(isClassifier) {
+                        // The classifier may not have been built, and blocks past
+                        // the end of the program have no label; both used to be an
+                        // exception out of the click handler.
                         ClassifierModel classifier = cantordust.getClassifier();
-                        l = new JLabel(ClassifierModel.classes[classifier.classAtIndex(memoryLocation)]);
+                        l = new JLabel(classifier == null ? "classifier not generated"
+                                : ClassifierModel.nameOf(classifier.classAtIndex(memoryLocation)));
                     } else {
                         l = new JLabel(currentAddress);
                     }
@@ -182,12 +195,17 @@ public class MetricMap extends Visualizer{
                         p2.setBackground(Color.black);
                     }
                     p2.add(l);
-                    popupAddr = pf.getPopup(metricMap, p2, xf, yf);
+                    popupAddr = pf.getPopup(bv, p2, xf, yf);
                     popupAddr.show();
                     
                     try{
                         // Set current location in Ghidra to this address
                         cantordust.gotoFileAddress(memoryLocation);
+                        MainInterface mi = cantordust.getMainInterface();
+                        if(mi != null){
+                            mi.setStatus("offset @ 0x" + Long.toHexString(memoryLocation).toUpperCase()
+                                    + "   address " + currentAddress);
+                        }
                     } catch(IllegalArgumentException exception){
                     }
                 }
@@ -198,7 +216,7 @@ public class MetricMap extends Visualizer{
                     popupAddr.hide();
                 }
                 if(e.getButton() == 3){
-                    popupMenu.show(frame, MetricMap.this.getX() + e.getX(), MetricMap.this.getY() + e.getY());
+                    popupMenu.show(MetricMap.this, e.getX(), e.getY());
                 }
             }
         });
@@ -215,7 +233,7 @@ public class MetricMap extends Visualizer{
         return currentData;
     }
 
-    public void createPopupMenu(JFrame frame){
+    public void createPopupMenu(){
         popupMenu = new JPopupMenu("Menu");
         JMenuItem pause = new JMenuItem("Pause");
 
@@ -381,8 +399,11 @@ public class MetricMap extends Visualizer{
                     isClassifier = true;
                     csource = new ColorClassifierPrediction(cantordust, getCurrentData());
                     draw();
-                    cantordust.cdprint("clicked classifier prediction\n");
-                } else { cantordust.cdprint("clicked classifier prediction\nAlready set\n"); }
+                }
+                // Selecting this shading is the request. Building the classifier
+                // first was a separate menu item that had to be found and clicked,
+                // and picking the shading without it threw.
+                ensureClassifier();
             }
         });
         
@@ -404,15 +425,8 @@ public class MetricMap extends Visualizer{
 
         JMenuItem classGen = new JMenuItem("Generate Classifier");
         classGen.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {    
-                // draw();
-                cantordust.cdprint("clicked Generate Classifier\n");
-                //isClassifier = true;
-                cantordust.initiateClassifier();
-                popupMenu.remove(close);
-                //popupMenu.add(stopClassifier);
-                popupMenu.add(close);
-                cantordust.cdprint("generated classifier\n");
+            public void actionPerformed(ActionEvent e) {
+                ensureClassifier();
             }
         });
 
@@ -553,29 +567,120 @@ public class MetricMap extends Visualizer{
     public void plotMap(TwoIntegerTuple dimensions){
         int width = dimensions.get(0);
         int height = dimensions.get(1);
-        // int imageSize = width * height * 3;
-        // JPanel panel = new JPanel();
-        // getContentPane().removeAll();
-        // getContentPane().add(panel);
-        // panel.add( createImageLabel(this.pixelMap1D, width, height) );
-        // panel.revalidate();
-        // panel.repaint();
-        removeAll();
-        add( createImageLabel(this.pixelMap1D, width, height) );
-        revalidate();
+        // Keep the curve as an image and scale it when painting. It used to be
+        // wrapped in a JLabel added as a child, which pinned the map to its own
+        // resolution: in a docked window the panel simply cropped it. The
+        // removeAll() that came with it also threw away the popup menu.
+        mapImage = createMapImage(this.pixelMap1D, width, height);
         repaint();
     }
-    
-    private JLabel createImageLabel(int[] pixels, int width, int height)
+
+    /**
+     * Builds the classifier if it is not already there, on a worker thread with
+     * progress on the status line, then redraws.
+     *
+     * This used to run on the event thread from the menu action, which froze the
+     * whole Ghidra window for as long as it took - and it took tens of seconds
+     * before the models were made compact.
+     */
+    private void ensureClassifier() {
+        if(cantordust.isClassifierReady()) {
+            draw();
+            return;
+        }
+        if(!classifierBuilding.compareAndSet(false, true)) {
+            return;
+        }
+        Thread t = new Thread(() -> {
+            MainInterface mi = cantordust.getMainInterface();
+            Thread reporter = new Thread(() -> {
+                try {
+                    while(classifierBuilding.get()) {
+                        ClassifierModel m = cantordust.getClassifier();
+                        if(mi != null && m != null && !m.getStage().isEmpty()) {
+                            mi.setStatus(String.format("Building classifier: %s (%.0f%%)",
+                                    m.getStage(), m.getProgress() * 100));
+                        } else if(mi != null) {
+                            mi.setStatus("Building classifier\u2026");
+                        }
+                        Thread.sleep(250);
+                    }
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+            }, "cantordust-classifier-progress");
+            reporter.setDaemon(true);
+            reporter.start();
+            try {
+                cantordust.initiateClassifier();
+                if(mi != null) {
+                    mi.setStatus("Classifier ready");
+                }
+            } catch (RuntimeException ex) {
+                cantordust.cdprint("classifier failed: " + ex + "\n");
+                if(mi != null) {
+                    mi.setStatus("Classifier failed: " + ex.getMessage());
+                }
+            } finally {
+                classifierBuilding.set(false);
+            }
+            draw();
+        }, "cantordust-classifier");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private BufferedImage createMapImage(int[] pixels, int width, int height)
     {
-        // int change = size_hilbert - (int)((width - size_hilbert)/2);
-        // cantordust.cdprint("ch: "+change+"\n");
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        // cantordust.cdprint("w: "+width+"\nh: "+height+"\n");
         WritableRaster raster = image.getRaster();
         raster.setPixels(0, 0, width, height, pixels);
-        label = new JLabel( new ImageIcon(image) );
-        return label;
+        return image;
+    }
+
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        BufferedImage img = mapImage;
+        if(img == null) {
+            return;
+        }
+        int pw = getWidth();
+        int ph = getHeight();
+        if(pw <= 0 || ph <= 0) {
+            return;
+        }
+        // Fit, do not stretch. A locality preserving curve drawn to a non-square
+        // panel stops preserving locality in any way the eye can use.
+        double scale = Math.min(pw / (double) img.getWidth(), ph / (double) img.getHeight());
+        int w = Math.max(1, (int)(img.getWidth() * scale));
+        int h = Math.max(1, (int)(img.getHeight() * scale));
+        int x = (pw - w) / 2;
+        int y = (ph - h) / 2;
+        mapBounds.setBounds(x, y, w, h);
+        g.drawImage(img, x, y, w, h, null);
+    }
+
+    /**
+     * Panel coordinates to a cell of the curve, or null when the point is
+     * outside the drawn map. Everything that turns a click into an address goes
+     * through here, so the mapping stays correct at any panel size.
+     */
+    private TwoIntegerTuple toMapPoint(int px, int py) {
+        BufferedImage img = mapImage;
+        Rectangle b = mapBounds;
+        if(img == null || b.width <= 0 || b.height <= 0 || !b.contains(px, py)) {
+            return null;
+        }
+        int mx = (px - b.x) * img.getWidth() / b.width;
+        int my = (py - b.y) * img.getHeight() / b.height;
+        if(mx >= img.getWidth()) {
+            mx = img.getWidth() - 1;
+        }
+        if(my >= img.getHeight()) {
+            my = img.getHeight() - 1;
+        }
+        return new TwoIntegerTuple(mx, my);
     }
 
     public static int getWindowSize() {

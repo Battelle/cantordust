@@ -383,6 +383,11 @@ class RangeSliderUI extends BasicSliderUI {
             if (!slider.isEnabled()) {
                 return;
             }
+            // Left button only. Every button used to start a thumb drag, so a
+            // right-click meant to open a context menu also grabbed a thumb.
+            if (!SwingUtilities.isLeftMouseButton(e)) {
+                return;
+            }
 
             currentMouseX = e.getX();
             currentMouseY = e.getY();

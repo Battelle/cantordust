@@ -11,15 +11,60 @@ public class OneTupleVisualizer extends Visualizer {
     private double blockHeight;
     private int groupLines = 16;
     private Color color = Color.GREEN;
+    private OffsetJump jump;
 
-    public OneTupleVisualizer(int windowSize, GhidraSrc cantordust, JFrame frame) {
+    public OneTupleVisualizer(int windowSize, GhidraSrc cantordust) {
         super(windowSize, cantordust);
         blockHeight = blockWidth;
         cantordust.cdprint("about to execute createPopupMenu\n");
-        createPopupMenu(frame);
+        createPopupMenu();
+        addClickToJump();
     }
 
-    public void createPopupMenu(JFrame frame){
+    // Special constructor for initialization of plugin
+    public OneTupleVisualizer(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
+        super(windowSize, cantordust, mainInterface);
+        blockHeight = blockWidth;
+        createPopupMenu();
+        addClickToJump();
+    }
+
+    /**
+     * Each row is a run of 256 * groupLines bytes of the file and each column a
+     * byte value, so a click identifies both a region and a value: jump to where
+     * that value occurs inside that region rather than anywhere in the file.
+     */
+    private void addClickToJump() {
+        jump = new OffsetJump(cantordust);
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if(e.getButton() != MouseEvent.BUTTON1) {
+                    return;
+                }
+                int w = getWidth(), h = getHeight();
+                if(w <= 0 || h <= 0) {
+                    return;
+                }
+                int value = e.getX() * 256 / w;
+                int row = e.getY() * 256 / h;
+                if(value < 0 || value > 255 || row < 0 || row > 255) {
+                    return;
+                }
+                int low = dataMicroSlider.getValue();
+                int high = dataMicroSlider.getUpperValue();
+                int span = 256 * groupLines;
+                int rowStart = low + row * span;
+                int rowEnd = Math.min(high, rowStart + span);
+                byte[] data = cantordust.getMainInterface().getData();
+                String msg = jump.toPattern(data, rowStart, rowEnd, new int[]{value},
+                        String.format("byte %02X in row %d", value, row));
+                cantordust.getMainInterface().setStatus(msg);
+            }
+        });
+    }
+
+    public void createPopupMenu(){
         JPopupMenu popup = new JPopupMenu("test1");
         // add color options
         HashMap<String, Color> colorButtons = new HashMap<String, Color>() {{
@@ -64,10 +109,10 @@ public class OneTupleVisualizer extends Visualizer {
         popup.add(colors);
         popup.add(lines);
         
-        frame.addMouseListener(new MouseAdapter() {  
+        this.addMouseListener(new MouseAdapter() {  
             public void mouseReleased(MouseEvent e) {  
                 if(e.getButton() == 3){
-                    popup.show(frame , e.getX(), e.getY());
+                    popup.show(OneTupleVisualizer.this, e.getX(), e.getY());
                 }
             }                 
         }); 
@@ -77,8 +122,10 @@ public class OneTupleVisualizer extends Visualizer {
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        dataMicroSlider.setMinimum(dataMacroSlider.getValue());
-        dataMicroSlider.setMaximum(dataMacroSlider.getUpperValue());
+        // MainInterface nests the micro range inside the macro one as a single
+        // atomic model update; a visualizer that also moved the bounds - from a
+        // paint or a worker thread, as this did - fights that and re-fires the
+        // listener that asked for this redraw.
         int low = dataMicroSlider.getValue();
         int high = dataMicroSlider.getUpperValue();
         gradientPlot((Graphics2D)g, low, high);
