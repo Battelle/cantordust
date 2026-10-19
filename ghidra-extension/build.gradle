@@ -1,0 +1,49 @@
+// Builds Cantordust as a Ghidra Extension: a zip that installs through
+// File > Install Extensions and provides a plugin, no script directory to map.
+//
+// It needs a Ghidra install to build against, found the way Ghidra's own
+// buildExtension.gradle finds it:
+//
+//     gradle -PGHIDRA_INSTALL_DIR=/path/to/ghidra_12.1.4_PUBLIC
+//
+// The visualization sources are the repository's resources/ directory,
+// compiled in from the parent tree rather than copied, so the plugin and the
+// script are always the same code. The script itself and its icons ship inside
+// the zip too, under ghidra_scripts/, so installing the extension also makes
+// "Cantordust.java" appear in the Script Manager.
+
+def ghidraInstallDir = project.findProperty('GHIDRA_INSTALL_DIR') ?: System.getenv('GHIDRA_INSTALL_DIR')
+if (!ghidraInstallDir) {
+    throw new GradleException("Set GHIDRA_INSTALL_DIR to a Ghidra install (-PGHIDRA_INSTALL_DIR=... or the environment).")
+}
+apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java', '../']
+            include 'cantordust/**/*.java'
+            include 'resources/**/*.java'
+            // The script's own base class and provider stay out of the plugin;
+            // the plugin has its own host and reuses CantordustProvider.
+            exclude 'resources/GhidraSrc.java'
+        }
+        resources {
+            srcDirs = ['src/main/resources', '../']
+            include 'images/**'
+            include 'resources/icons/**'
+            include 'resources/templates/**'
+        }
+    }
+}
+
+// Ship the script alongside, so the Script Manager finds it too.
+tasks.named('buildExtension') {
+    from(project.rootDir.parentFile) {
+        include 'Cantordust.java'
+        include 'resources/**/*.java'
+        include 'resources/icons/**'
+        include 'resources/templates/**'
+        into "${project.name}/ghidra_scripts"
+    }
+}

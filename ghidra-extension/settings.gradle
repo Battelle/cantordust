@@ -1,0 +1,3 @@
+// Its own build, not a subproject of the standalone one: it needs a Ghidra
+// install and JDK 21 that the root build does not.
+rootProject.name = 'Cantordust'
