@@ -61,7 +61,7 @@ public class CantordustPlugin extends ProgramPlugin {
         // A provider built for the previous program shows the previous program's
         // bytes; replace it rather than let it go stale.
         if (provider != null) {
-            close();
+            closeProvider();
             open();
         }
     }
@@ -69,7 +69,7 @@ public class CantordustPlugin extends ProgramPlugin {
     @Override
     protected void programDeactivated(Program program) {
         openAction.setEnabled(false);
-        close();
+        closeProvider();
     }
 
     private void open() {
@@ -77,7 +77,7 @@ public class CantordustPlugin extends ProgramPlugin {
         if (program == null) {
             return;
         }
-        close();
+        closeProvider();
         host = new PluginHost(this, program);
         byte[] data = host.getData();
         if (data.length < 4) {
@@ -96,7 +96,12 @@ public class CantordustPlugin extends ProgramPlugin {
         });
     }
 
-    private void close() {
+    /**
+     * Not named close(): Plugin already has a protected close() with its own
+     * lifecycle meaning, and a private method of that name is an illegal
+     * narrowing override rather than a new method.
+     */
+    private void closeProvider() {
         if (provider != null) {
             tool.removeComponentProvider(provider);
             provider = null;
@@ -106,7 +111,7 @@ public class CantordustPlugin extends ProgramPlugin {
 
     @Override
     protected void dispose() {
-        close();
+        closeProvider();
         super.dispose();
     }
 
