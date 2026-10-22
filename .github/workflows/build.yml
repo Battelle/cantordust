@@ -84,13 +84,13 @@ jobs:
         run: ../gradlew buildExtension -PGHIDRA_INSTALL_DIR="$GITHUB_WORKSPACE/ghidra_install" --console=plain
       - name: Show what the zip carries
         run: |
-          Z=$(ls ghidra-extension/dist/*.zip); echo "$Z"; unzip -l "$Z" | grep -E "Cantordust.jar|extension.properties|ghidra_scripts/Cantordust.java|ghidra_scripts/resources/templates/arm64|images/cantordust" | sed 's/^/  /'
+          Z=$(ls ghidra-extension/dist/*.zip); echo "$Z"; unzip -l "$Z" | grep -E "Cantordust.jar|extension.properties|images/cantordust|ghidra_scripts" || true | sed 's/^/  /'
       - uses: actions/upload-artifact@v4
         with:
           name: cantordust-ghidra-extension
           path: ghidra-extension/dist/*.zip
 
-  # A tag like v2.0.0 turns the artifacts into a GitHub release.
+  # A tag like v1.0.0 turns the artifacts into a GitHub release.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [package, extension]
@@ -99,11 +99,27 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: artifacts }
-      - run: |
+      - name: Assemble the release assets
+        run: |
+          # upload-artifact strips the common build/ prefix, so each package
+          # artifact holds libs/cantordust.jar and jpackage/<bundle>.
           cd artifacts
-          (cd cantordust-windows-latest && zip -qr ../Cantordust-windows.zip Cantordust)
-          cp cantordust-ubuntu-latest/cantordust.jar ./cantordust.jar
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
-            cantordust.jar Cantordust-windows.zip cantordust-ghidra-extension/*.zip \
-            cantordust-macos-latest/build/jpackage/*.dmg cantordust-ubuntu-latest/build/jpackage/*.deb
-        env: { GH_TOKEN: '${{ github.token }}' }
+          find . -maxdepth 3 -not -path '*/runtime/*' -not -path '*/app/*' | sort
+          mkdir ../release
+          (cd cantordust-windows-latest/jpackage && zip -qr ../../../release/Cantordust-windows.zip Cantordust)
+          cp cantordust-ubuntu-latest/libs/cantordust.jar ../release/
+          cp cantordust-ghidra-extension/*.zip cantordust-macos-latest/jpackage/*.dmg \
+             cantordust-ubuntu-latest/jpackage/*.deb ../release/
+          ls -l ../release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: release/*
+      # The release is created by whoever owns RELEASE_TOKEN, so it carries a
+      # maintainer's name rather than github-actions[bot]. Without the secret,
+      # download the release-<tag> artifact and publish it by hand:
+      #   gh release create <tag> --generate-notes release/*
+      - name: Publish the release
+        if: env.RELEASE_TOKEN != ''
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes release/*
+        env: { RELEASE_TOKEN: '${{ secrets.RELEASE_TOKEN }}', GH_TOKEN: '${{ secrets.RELEASE_TOKEN }}' }
