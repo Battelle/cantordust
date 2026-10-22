@@ -17,7 +17,7 @@ plugins {
 }
 
 group = 'org.battelle'
-version = '2.0.0'
+version = '1.0.0'
 
 // Compile with whatever JDK is running Gradle, but emit Java 17 bytecode and
 // restrict the API to Java 17, so the result runs on the JDK Ghidra ships with.
