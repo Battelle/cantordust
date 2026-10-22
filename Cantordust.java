@@ -33,6 +33,17 @@ public class Cantordust extends GhidraSrc {
             return;
         }
 
+        // When the Cantordust extension is installed, its jar already provides
+        // every class under resources/, and the OSGi loader will not let this
+        // script's copy of that package load beside it - the symptom is
+        // "could not be found or loaded ... resources/GhidraSrc" with no further
+        // explanation. The plugin is the extension; use it instead.
+        if (isExtensionInstalled()) {
+            printf("The Cantordust extension is installed; use Window > Cantordust (or Alt+C) in the CodeBrowser instead of this script.\n");
+            printf("To use the script, uninstall the extension first (File > Install Extensions, untick Cantordust).\n");
+            return;
+        }
+
         PluginTool tool = getState().getTool();
         if(tool == null){
             printf("Cantordust needs a Ghidra tool window; run it from the GUI.\n");
@@ -69,6 +80,21 @@ public class Cantordust extends GhidraSrc {
                 resources.MainInterface.getWindowHeight()));
         this.provider = new CantordustProvider(tool, mainInterface, name, this);
         tool.addComponentProvider(provider, true);
+    }
+
+    /**
+     * True if the Cantordust extension is installed in this Ghidra. Checked on
+     * disk rather than by loading a class: the whole problem is that the
+     * extension's classes and this script's live in separate loaders, so a
+     * class lookup from here could miss it and give no warning at all.
+     */
+    private static boolean isExtensionInstalled() {
+        try {
+            File userDir = ghidra.framework.Application.getUserSettingsDirectory();
+            return new File(userDir, "Extensions" + File.separator + "Cantordust").isDirectory();
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     @Override

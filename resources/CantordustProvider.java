@@ -21,10 +21,23 @@ public class CantordustProvider extends ComponentProvider {
 
     private final MainInterface mainInterface;
     private final PluginTool tool;
+    private final boolean ownedByScript;
 
     public CantordustProvider(PluginTool tool, MainInterface mainInterface,
                               String programName, Host host) {
+        this(tool, mainInterface, programName, host, true);
+    }
+
+    /**
+     * @param ownedByScript true when a script created this provider. A script
+     *        cannot rebuild it on the next launch, so it is kept out of the saved
+     *        tool configuration and dropped when its window closes. A plugin can
+     *        and does rebuild it, so its provider is an ordinary one.
+     */
+    public CantordustProvider(PluginTool tool, MainInterface mainInterface,
+                              String programName, Host host, boolean ownedByScript) {
         super(tool, NAME, NAME);
+        this.ownedByScript = ownedByScript;
         this.tool = tool;
         this.mainInterface = mainInterface;
 
@@ -35,9 +48,11 @@ public class CantordustProvider extends ComponentProvider {
         // then a drag away, rather than the only option.
         setDefaultWindowPosition(WindowPosition.WINDOW);
 
-        // The tool cannot rebuild a script-created provider when it restores
-        // itself on the next launch, so keep this out of the saved configuration.
-        setTransient();
+        if (ownedByScript) {
+            // The tool cannot rebuild a script-created provider when it restores
+            // itself on the next launch, so keep this out of the saved configuration.
+            setTransient();
+        }
 
         setWindowMenuGroup(NAME);
         loadIcon(host);
@@ -62,8 +77,11 @@ public class CantordustProvider extends ComponentProvider {
     @Override
     public void closeComponent() {
         super.closeComponent();
-        // Nothing can reopen a script-created provider from the UI, so drop it
-        // from the tool instead of leaving a dead entry in the Window menu.
-        tool.removeComponentProvider(this);
+        if (ownedByScript) {
+            // Nothing can reopen a script-created provider from the UI, so drop it
+            // from the tool instead of leaving a dead entry in the Window menu.
+            tool.removeComponentProvider(this);
+        }
+        // A plugin's provider stays registered; Window > Cantordust shows it again.
     }
 }

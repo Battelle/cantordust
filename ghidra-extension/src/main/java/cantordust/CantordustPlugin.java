@@ -1,13 +1,20 @@
 package cantordust;
 
+import java.awt.Image;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.io.InputStream;
 
-import javax.swing.SwingUtilities;
+import javax.imageio.ImageIO;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 
 import docking.ActionContext;
 import docking.action.DockingAction;
+import docking.action.KeyBindingData;
 import docking.action.MenuData;
+import docking.action.ToolBarData;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.framework.plugintool.PluginInfo;
@@ -51,49 +58,75 @@ public class CantordustPlugin extends ProgramPlugin {
             }
         };
         openAction.setMenuBarData(new MenuData(new String[]{"Window", "Cantordust"}, "Cantordust"));
+        // The same two ways in the script offered: its toolbar icon and Alt+C.
+        openAction.setToolBarData(new ToolBarData(toolbarIcon(), "Cantordust"));
+        openAction.setKeyBindingData(new KeyBindingData(KeyEvent.VK_C, InputEvent.ALT_DOWN_MASK));
+        openAction.setDescription("Open Cantordust (binary visualization)");
         openAction.setEnabled(false);
         tool.addAction(openAction);
+    }
+
+    /** The toolbar icon, from this jar. ImageIO rather than ResourceManager - see CantordustPluginPackage. */
+    private static Icon toolbarIcon() {
+        try (InputStream in = CantordustPlugin.class.getClassLoader().getResourceAsStream("resources/icons/icon.png")) {
+            if (in != null) {
+                return new ImageIcon(ImageIO.read(in).getScaledInstance(16, 16, Image.SCALE_SMOOTH));
+            }
+        } catch (IOException | RuntimeException e) {
+            // fall through
+        }
+        return new ImageIcon();
     }
 
     @Override
     protected void programActivated(Program program) {
         openAction.setEnabled(true);
-        // A provider built for the previous program shows the previous program's
-        // bytes; replace it rather than let it go stale.
-        if (provider != null) {
+        // A provider built for another program shows that program's bytes.
+        // Drop it; the next Window > Cantordust builds one for this program.
+        if (provider != null && host != null && host.program != program) {
             closeProvider();
-            open();
         }
     }
 
     @Override
     protected void programDeactivated(Program program) {
         openAction.setEnabled(false);
-        closeProvider();
     }
 
+    /**
+     * Shows the Cantordust window for the current program, building it on
+     * first use. Everything here runs on the event thread, which is where the
+     * action fires, so there is no hand-off to lose an exception in.
+     */
     private void open() {
         Program program = getCurrentProgram();
         if (program == null) {
+            tool.setStatusInfo("Cantordust: open a program first");
+            return;
+        }
+        if (provider != null && host != null && host.program == program) {
+            tool.showComponentProvider(provider, true);
             return;
         }
         closeProvider();
-        host = new PluginHost(this, program);
-        byte[] data = host.getData();
+        PluginHost newHost = new PluginHost(this, program);
+        byte[] data = newHost.getData();
         if (data.length < 4) {
             tool.setStatusInfo("Cantordust: " + program.getName() + " has no bytes to visualize");
             return;
         }
-        SwingUtilities.invokeLater(() -> {
-            try {
-                MainInterface mi = new MainInterface(data, host);
-                host.setMainInterface(mi);
-                provider = new CantordustProvider(tool, mi, program.getName(), host);
-                tool.addComponentProvider(provider, true);
-            } catch (IOException e) {
-                tool.setStatusInfo("Cantordust: could not build the interface: " + e.getMessage());
-            }
-        });
+        try {
+            MainInterface mi = new MainInterface(data, newHost);
+            newHost.setMainInterface(mi);
+            host = newHost;
+            provider = new CantordustProvider(tool, mi, program.getName(), newHost, false);
+            tool.addComponentProvider(provider, true);
+            tool.showComponentProvider(provider, true);
+        } catch (IOException | RuntimeException e) {
+            // Say so where the user is looking, and keep the stack for the log.
+            tool.setStatusInfo("Cantordust: could not open - " + e);
+            ghidra.util.Msg.error(this, "Cantordust could not open", e);
+        }
     }
 
     /**

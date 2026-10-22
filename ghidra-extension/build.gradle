@@ -8,9 +8,7 @@
 //
 // The visualization sources are the repository's resources/ directory,
 // compiled in from the parent tree rather than copied, so the plugin and the
-// script are always the same code. The script itself and its icons ship inside
-// the zip too, under ghidra_scripts/, so installing the extension also makes
-// "Cantordust.java" appear in the Script Manager.
+// script are always the same code.
 
 def ghidraInstallDir = project.findProperty('GHIDRA_INSTALL_DIR') ?: System.getenv('GHIDRA_INSTALL_DIR')
 if (!ghidraInstallDir) {
@@ -37,13 +35,9 @@ sourceSets {
     }
 }
 
-// Ship the script alongside, so the Script Manager finds it too.
-tasks.named('buildExtension') {
-    from(project.rootDir.parentFile) {
-        include 'Cantordust.java'
-        include 'resources/**/*.java'
-        include 'resources/icons/**'
-        include 'resources/templates/**'
-        into "${project.name}/ghidra_scripts"
-    }
-}
+// The script is deliberately NOT shipped inside the extension. Ghidra compiles
+// an extension's ghidra_scripts/ into an OSGi bundle of its own, and that bundle
+// then holds a second copy of every resources.* class the extension jar already
+// provides - two loaders, one package, and the script fails with "could not
+// load resources/GhidraSrc". The plugin is the extension; the script stays in
+// the checkout for those who map a script directory.
