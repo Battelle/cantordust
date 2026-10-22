@@ -15,3 +15,6 @@ __pycache__/
 # Gradle output for the standalone build
 build/
 .gradle/
+ghidra-extension/build/
+ghidra-extension/.gradle/
+ghidra-extension/dist/
