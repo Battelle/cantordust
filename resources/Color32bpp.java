@@ -4,7 +4,7 @@ import java.awt.Color;
 public class Color32bpp extends ColorSource { /* see binvis - ColorHilbert class */
     Hilbert map;
     double step;
-    public Color32bpp(GhidraSrc cantordust, byte[] data) {
+    public Color32bpp(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "32bpp";
     }

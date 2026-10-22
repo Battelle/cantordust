@@ -158,13 +158,13 @@ public class ThreeTupleVisualizer extends Visualizer {
     private JPopupMenu popup;
     private int dragX, dragY;
 
-    public ThreeTupleVisualizer(int windowSize, GhidraSrc cantordust) {
+    public ThreeTupleVisualizer(int windowSize, Host cantordust) {
         super(windowSize, cantordust);
         init();
     }
 
     // Special constructor for initialization of plugin
-    public ThreeTupleVisualizer(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
+    public ThreeTupleVisualizer(int windowSize, Host cantordust, MainInterface mainInterface) {
         super(windowSize, cantordust, mainInterface);
         init();
     }

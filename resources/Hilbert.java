@@ -8,11 +8,11 @@ public class Hilbert extends Scurve{
     protected int dimension;
     protected int order;
     protected Utils utils;
-    public Hilbert(GhidraSrc cantordust){
+    public Hilbert(Host cantordust){
         super(cantordust);
         this.type = "hilbert";
     }
-    public Hilbert(GhidraSrc cantordust, int dimension, int order){
+    public Hilbert(Host cantordust, int dimension, int order){
         super(cantordust);
         this.type = "hilbert";
         this.dimension = dimension;
@@ -28,7 +28,7 @@ public class Hilbert extends Scurve{
         }
         this.cantordust.cdprint("dimension: "+dimension+"\norder: "+order+"\n");
     }
-    public Hilbert(GhidraSrc cantordust, int dimension, double size) {
+    public Hilbert(Host cantordust, int dimension, double size) {
         super(cantordust);
         this.type = "hilbert";
         this.dimension = dimension;

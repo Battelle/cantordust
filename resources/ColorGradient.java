@@ -1,7 +1,7 @@
 package resources;
 
 public class ColorGradient extends ColorSource {
-    public ColorGradient(GhidraSrc cantordust, byte[] data) {
+    public ColorGradient(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "gradient";
     }

@@ -28,7 +28,7 @@ public class BitMapSlider extends RangeSlider {
     protected byte[] data;
     private int stripMode = MODE_VALUE;
     private JPopupMenu popup;
-    protected GhidraSrc 
+    protected Host 
 cd;
     BitMapSliderUI ui;
 
@@ -36,7 +36,7 @@ cd;
      * Constructs a BitMapSlider with the specified default minimum and maximum 
      * values.
      */
-    public BitMapSlider(int min, int max, byte[] data, GhidraSrc 
+    public BitMapSlider(int min, int max, byte[] data, Host 
 cd) {
         super(min, max);
         initSlider();

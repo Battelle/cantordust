@@ -5,11 +5,11 @@ import java.util.TreeSet;
 
 public abstract class ColorSource {
     protected byte[] data;
-    protected GhidraSrc cantordust;
+    protected Host cantordust;
     protected HashMap<Byte, Integer> symbol_map;
     protected String type;
 
-    ColorSource(GhidraSrc cantordust, byte[] data/* , block */) {
+    ColorSource(Host cantordust, byte[] data/* , block */) {
         this.cantordust = cantordust;
         this.data = data;
         this.symbol_map = new HashMap<Byte, Integer>();

@@ -3,7 +3,7 @@ package resources;
 public class ColorSpectrum extends ColorSource { /* see binvis - ColorHilbert class */
     Hilbert map;
     double step;
-    public ColorSpectrum(GhidraSrc cantordust, byte[] data) {
+    public ColorSpectrum(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "spectrum";
         this.map = new Hilbert(this.cantordust, 3, (Math.pow(256, 3)));

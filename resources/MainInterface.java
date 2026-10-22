@@ -49,7 +49,7 @@ public class MainInterface extends JPanel {
     public JButton threeTupleButton;
     public JPopupMenu popup;
 
-    public GhidraSrc cantordust;
+    public Host cantordust;
     public JLabel dataRange = new JLabel();
     public JLabel macroCaption = new JLabel();
     public JLabel microCaption = new JLabel();
@@ -87,7 +87,7 @@ public class MainInterface extends JPanel {
     protected byte theme;
     protected Boolean dispMetricMap;
 
-    public MainInterface(byte[] mdata, GhidraSrc cd) throws IOException {
+    public MainInterface(byte[] mdata, Host cd) throws IOException {
         this.data = mdata;
         this.fullData = mdata;
         this.cantordust = cd;
@@ -541,9 +541,11 @@ public class MainInterface extends JPanel {
     }
 
     private JButton visButton(String iconFile, String name, ActionListener action) throws IOException {
-        Image icon = ImageIO.read(new File(basePath + "resources" + File.separator + "icons"
-                + File.separator + iconFile)).getScaledInstance(41, 41, Image.SCALE_SMOOTH);
-        JButton b = new JButton(new ImageIcon(icon));
+        Image icon;
+        try (java.io.InputStream in = cantordust.openResource("resources/icons/" + iconFile)) {
+            icon = ImageIO.read(in).getScaledInstance(41, 41, Image.SCALE_SMOOTH);
+        }
+        JButton b = new JButton(new RoundedIcon(icon, 41, 41));
         b.addActionListener(action);
         b.setPreferredSize(new Dimension(52, 52));
         // Lets the column compress in a short window rather than being clipped.

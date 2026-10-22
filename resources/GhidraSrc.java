@@ -15,12 +15,14 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.database.mem.FileBytes;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
-public class GhidraSrc extends GhidraScript{
+public class GhidraSrc extends GhidraScript implements Host {
     public MainInterface mainInterface;
     public String currentDirectory;
     public String name;
@@ -44,6 +46,15 @@ public class GhidraSrc extends GhidraScript{
 
     public String getCurrentDirectory(){
         return "";
+    }
+
+    /**
+     * As a script, resources are files beside Cantordust.java; the same relative
+     * path names an entry in the jar when running standalone.
+     */
+    @Override
+    public InputStream openResource(String relativePath) throws IOException {
+        return new FileInputStream(new File(getCurrentDirectory() + relativePath.replace('/', File.separatorChar)));
     }
 
     public MainInterface getMainInterface(){

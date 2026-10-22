@@ -8,9 +8,9 @@ import java.util.Iterator;
 import java.lang.Error;
 
 public class Utils{
-    protected GhidraSrc cantordust;
+    protected Host cantordust;
     protected byte[] data;
-    public Utils(GhidraSrc cantordust){
+    public Utils(Host cantordust){
         this.cantordust = cantordust;
         data = this.cantordust.getData();
     }

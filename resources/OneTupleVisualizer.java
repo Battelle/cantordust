@@ -13,7 +13,7 @@ public class OneTupleVisualizer extends Visualizer {
     private Color color = Color.GREEN;
     private OffsetJump jump;
 
-    public OneTupleVisualizer(int windowSize, GhidraSrc cantordust) {
+    public OneTupleVisualizer(int windowSize, Host cantordust) {
         super(windowSize, cantordust);
         blockHeight = blockWidth;
         cantordust.cdprint("about to execute createPopupMenu\n");
@@ -22,7 +22,7 @@ public class OneTupleVisualizer extends Visualizer {
     }
 
     // Special constructor for initialization of plugin
-    public OneTupleVisualizer(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
+    public OneTupleVisualizer(int windowSize, Host cantordust, MainInterface mainInterface) {
         super(windowSize, cantordust, mainInterface);
         blockHeight = blockWidth;
         createPopupMenu();

@@ -18,11 +18,11 @@ class OffsetJump {
     /** Matches any value at that position of the pattern. */
     static final int ANY = 0x100;
 
-    private final GhidraSrc cantordust;
+    private final Host cantordust;
     private int[] lastPattern;
     private long lastHit = -1;
 
-    OffsetJump(GhidraSrc cantordust) {
+    OffsetJump(Host cantordust) {
         this.cantordust = cantordust;
     }
 

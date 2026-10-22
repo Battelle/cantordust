@@ -33,7 +33,7 @@ public class MetricMap extends Visualizer{
     private final java.util.concurrent.atomic.AtomicBoolean classifierBuilding =
             new java.util.concurrent.atomic.AtomicBoolean(false);
 
-    public MetricMap(int windowSize, GhidraSrc cantordust) {
+    public MetricMap(int windowSize, Host cantordust) {
         super(windowSize, cantordust);
         data = this.cantordust.getMainInterface().getData();
         dataWidthSlider = this.cantordust.getMainInterface().widthSlider;
@@ -46,7 +46,7 @@ public class MetricMap extends Visualizer{
     }
     
     // Special constructor for initialization of plugin
-    public MetricMap(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
+    public MetricMap(int windowSize, Host cantordust, MainInterface mainInterface) {
         super(windowSize, cantordust, mainInterface);
         data = mainInterface.getData();
         dataWidthSlider = mainInterface.widthSlider;

@@ -4,7 +4,7 @@ import java.awt.Color;
 public class Color16bpp_ARGB1555 extends ColorSource { /* see binvis - ColorHilbert class */
     Hilbert map;
     double step;
-    public Color16bpp_ARGB1555(GhidraSrc cantordust, byte[] data) {
+    public Color16bpp_ARGB1555(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "16bpp ARGB1555";
     }

@@ -59,13 +59,13 @@ public class TwoTupleVisualizer extends Visualizer {
     private OffsetJump jump;
     private JPopupMenu popup;
 
-    public TwoTupleVisualizer(int windowSize, GhidraSrc cantordust) {
+    public TwoTupleVisualizer(int windowSize, Host cantordust) {
         super(windowSize, cantordust);
         init();
     }
 
     // Special constructor for initialization of plugin
-    public TwoTupleVisualizer(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
+    public TwoTupleVisualizer(int windowSize, Host cantordust, MainInterface mainInterface) {
         super(windowSize, cantordust, mainInterface);
         init();
     }

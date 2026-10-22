@@ -9,11 +9,11 @@ public class HCurve extends Scurve{
     protected int size;
     protected Utils utils;
     public HashMap<TwoIntegerTuple, Integer> indexes;
-    public HCurve(GhidraSrc cantordust){
+    public HCurve(Host cantordust){
         super(cantordust);
         this.type = "hcurve";
     }
-    public HCurve(GhidraSrc cantordust, int dimension, double size) {
+    public HCurve(Host cantordust, int dimension, double size) {
         super(cantordust);
         this.type = "hcurve";
         this.utils = new Utils(this.cantordust);

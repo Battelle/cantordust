@@ -7,11 +7,11 @@ public class Zorder extends Scurve{
     protected int dimension;
     protected int bits;
     protected Utils utils;
-    public Zorder(GhidraSrc cantordust){
+    public Zorder(Host cantordust){
         super(cantordust);
         this.type = "zorder";
     }
-    public Zorder(GhidraSrc cantordust, int dimension, double size) {
+    public Zorder(Host cantordust, int dimension, double size) {
         super(cantordust);
         this.type = "zorder";
         this.utils = new Utils(this.cantordust);

@@ -43,37 +43,99 @@ file is drawn. Overview picks the window; Selection picks the range inside it.
 Files larger than 25 MB are viewed through a 1 MB working window that a third
 slider scrolls.
 
-**Cantordust is dependent on Ghidra version 9.1 or higher**
-
 ## Installation
 
-1. Clone the repository from Github
+Cantordust runs three ways. Pick one:
 
-2. Install Ghidra **9.1** or higher (Cantordust requires this version or higher)
-      1. Download from: [https://ghidra-sre.org](https://ghidra-sre.org/)
-      2. Refer to the Ghidra Installation Guide: https://ghidra-sre.org/InstallationGuide.html
-3. Open Ghidra and start a new Project
-4. Map the Script Manager to your cantordust repo
-   1. Click the green play button in the task bar (script manager)
-   2. Click on the icon called "script directories" when hovered over
-   3. Click the green `+` (plus sign) and add the cantordust directory to the list
-5. Run Cantordust for testing
-   1. Filter the script manager for `Cantordust.java`. 
-   2. Highlight the file and click the green play button
+| | Best for | Needs |
+|---|---|---|
+| **Ghidra extension** | Everyday use inside the CodeBrowser | Ghidra 12.1 or later |
+| **Ghidra script** | Hacking on Cantordust itself | Ghidra 9.1 or later, a clone of this repo |
+| **Standalone app** | Looking at a file without opening Ghidra | Nothing (the app bundles its own Java runtime) |
 
-> You can also assign a key binding to Cantordust.java by right clicking on the plugin.
+Downloads for all three are on the
+[Releases](https://github.com/Battelle/cantordust/releases) page.
 
-## Updating Cantordust:
+> The extension and the script cannot be used in the same Ghidra at once. Ghidra
+> exposes an installed extension's classes to every script, so a checkout of
+> this repo registered as a script directory will no longer compile while the
+> extension is installed. The script detects this and tells you to use the
+> extension instead. Pick one, or uninstall the extension before running the
+> script.
 
-1. Navigate to your `cantordust/` directory that stores this repository.
-2. run: `git pull`
-3. If Ghidra is already open, quit it and run `python3 cleanup.py`. Ghidra
+### As a Ghidra extension
+
+1. Download `ghidra_<version>_PUBLIC_<date>_Cantordust.zip` from Releases. Do
+   not unzip it; Ghidra reads the zip directly.
+2. In the Ghidra project window choose **File &rarr; Install Extensions**, click
+   the green **+**, pick the zip, click **OK**, and restart Ghidra when asked.
+   - The zip is built against one Ghidra release. If yours differs, Ghidra
+     warns and offers **Install Anyway**; that works across 12.x releases.
+3. Open a program in the CodeBrowser and enable the plugin:
+   **File &rarr; Configure &rarr; Configure All Plugins** (the plug icon in the
+   top-right of the dialog), tick **CantordustPlugin**, click **OK**. This is
+   needed once per tool.
+4. Open Cantordust with **Window &rarr; Cantordust**, the Cantordust toolbar
+   icon, or **Alt+C**.
+
+The Cantordust window follows the program in the CodeBrowser: clicking a point
+jumps the listing, and the window docks, floats, and is restored with the tool
+like any other Ghidra component.
+
+To remove it: **File &rarr; Install Extensions**, untick Cantordust, restart.
+
+### As a Ghidra script
+
+Use this if you want to edit Cantordust and see your changes without rebuilding
+the extension.
+
+1. Clone this repository.
+2. Install Ghidra **9.1** or later from [ghidra-sre.org](https://ghidra-sre.org/)
+   (see the [Installation Guide](https://ghidra-sre.org/InstallationGuide.html)).
+3. Open Ghidra, open a program in the CodeBrowser, and open the Script Manager
+   (the green play button in the toolbar, or **Window &rarr; Script Manager**).
+4. Click the **Manage Script Directories** icon, click the green **+**, and add
+   the cloned `cantordust/` directory.
+5. Filter the Script Manager for `Cantordust.java`, select it, and click the
+   green play button.
+
+> Tick the **In Tool** box next to `Cantordust.java` to get a toolbar button,
+> or right-click it to assign a key binding.
+
+#### Updating the script
+
+1. In your `cantordust/` checkout run `git pull`.
+2. If Ghidra is already open, quit it and run `python3 cleanup.py`. Ghidra
    recompiles changed scripts by itself, but a session that has already loaded
    Cantordust goes on using the classes it started with.
-4. Open up Ghidra and launch Cantordust as normal.
-   - If a change still does not take effect, see *"Development Tips:"*, section
-     *"Ghidra Script Compilation"*.
-   - If you're having trouble launching, refer to *"Installation and Setup: Steps 4-5"* 
+3. Start Ghidra and launch Cantordust as usual. If a change still does not
+   take effect, see *Ghidra Script Compilation* under *Development*.
+
+### As a standalone application
+
+The standalone app opens any file and offers every visualization. It has no
+listing to jump to, so clicking a point selects the bytes in the built-in hex
+view instead.
+
+| Platform | Download | Install |
+|---|---|---|
+| macOS | `Cantordust-<version>.dmg` | Open the dmg and drag Cantordust to Applications. |
+| Windows | `Cantordust-windows.zip` | Unzip anywhere and run `Cantordust\Cantordust.exe`. |
+| Linux | `cantordust_<version>-1_amd64.deb` | `sudo apt install ./cantordust_<version>-1_amd64.deb`, then find Cantordust in the app menu or run `/opt/cantordust/bin/Cantordust`. |
+| Any (Java 17+) | `cantordust.jar` | `java -jar cantordust.jar [file]` |
+
+The native packages bundle a Java runtime, so nothing else is needed. The jar
+needs Java 17 or later on your `PATH`.
+
+Pass a file on the command line to open it directly, or use **File &rarr; Open**
+(Ctrl+O, Cmd+O on macOS) once the app is up. The whole file is read into
+memory; files over 25 MB are then viewed through the same 1 MB working window
+as in Ghidra.
+
+> **macOS:** the app is not notarized. The first launch may be blocked with
+> *"Cantordust" cannot be opened because the developer cannot be verified*.
+> Right-click the app and choose **Open**, or run
+> `xattr -dr com.apple.quarantine /Applications/Cantordust.app` once.
 
 ## Development
 
@@ -131,6 +193,36 @@ python3 cleanup.py --all      # remove every compiled bundle
 The script searches the known settings locations, and only removes bundles
 containing a class built from this checkout unless you pass `--all`. Use
 `--settings-dir` if your Ghidra keeps settings somewhere else.
+
+#### Building the extension and the standalone app
+
+Both builds use the Gradle wrapper in the repository root and share the sources
+under `resources/`. The script, the extension, and the app differ only in the
+small `Host` implementation that feeds bytes in and takes clicks out.
+
+**Standalone app** (JDK 17 or later; `jpackage` needs JDK 14+):
+
+```sh
+./gradlew jar           # build/libs/cantordust.jar
+./gradlew jpackage      # build/jpackage/: a .dmg, .deb, or app-image for this OS
+./gradlew checkLayouts checkJumps checkClassifier checkEntropy   # headless checks
+```
+
+**Ghidra extension** (JDK 21 and a Ghidra 12.1 install):
+
+```sh
+export GHIDRA_INSTALL_DIR=/path/to/ghidra_12.1.4_PUBLIC
+./gradlew -p ghidra-extension      # ghidra-extension/dist/ghidra_..._Cantordust.zip
+```
+
+The build applies Ghidra's own `support/buildExtension.gradle`, so the zip
+carries the exact Ghidra version it was compiled against in its name. Install it
+with **File &rarr; Install Extensions** as described above. When reinstalling a
+rebuilt zip, untick the old Cantordust first, click OK, then add the new zip.
+
+The GitHub Actions workflow runs the headless checks on Linux, macOS, and
+Windows, packages the app for each, builds the extension, and attaches all of
+them to the release when a `v*` tag is pushed.
 
 ## License
 

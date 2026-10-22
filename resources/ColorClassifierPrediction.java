@@ -14,7 +14,7 @@ public class ColorClassifierPrediction extends ColorSource {
 
     private static final Rgb UNCLASSIFIED = new Rgb(28, 28, 28);
 
-    public ColorClassifierPrediction(GhidraSrc cantordust, byte[] data) {
+    public ColorClassifierPrediction(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "classifierPrediction";
     }

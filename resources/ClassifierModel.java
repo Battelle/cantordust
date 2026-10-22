@@ -1,8 +1,7 @@
 package resources;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
 
 /**
  * Labels each block of the program with the content class it most resembles,
@@ -31,8 +30,7 @@ public class ClassifierModel {
      */
     public static int CONTEXT = 64;
 
-    private final GhidraSrc cantordust;
-    private final String basePath;
+    private final Host cantordust;
     private final int grams;
     private final NGramModel[] nGramModels = new NGramModel[classes.length];
 
@@ -41,8 +39,7 @@ public class ClassifierModel {
     private volatile double progress;
     private volatile String stage = "";
 
-    public ClassifierModel(GhidraSrc cantordust, int grams) {
-        basePath = cantordust.getCurrentDirectory() + "resources" + File.separator + "templates" + File.separator;
+    public ClassifierModel(Host cantordust, int grams) {
         this.grams = grams;
         this.cantordust = cantordust;
     }
@@ -62,10 +59,10 @@ public class ClassifierModel {
 
     public void initialize() {
         for (int i = 0; i < classes.length; i++) {
-            String templatePath = basePath + classes[i] + ".template";
+            String templatePath = "resources/templates/" + classes[i] + ".template";
             byte[] data;
-            try {
-                data = Files.readAllBytes((new File(templatePath)).toPath());
+            try (InputStream in = cantordust.openResource(templatePath)) {
+                data = in.readAllBytes();
             } catch (IOException e) {
                 // Without this, an unreadable template left data null and the next
                 // line failed with an unrelated NPE, hiding the real cause.

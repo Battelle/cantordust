@@ -4,12 +4,12 @@ package resources;
 import java.lang.Error;
 
 public class Scurve{
-    protected GhidraSrc cantordust;
+    protected Host cantordust;
     protected int size = 512;
     protected byte[] data;
     protected String type;
     // private HashMap<String,Scurve> curveMap = new HashMap<String, Scurve>();
-    public Scurve(GhidraSrc cantordust){
+    public Scurve(Host cantordust){
         this.cantordust = cantordust;
         data = cantordust.getData();
         // curveMap.put("hcurve", new Hcurve());

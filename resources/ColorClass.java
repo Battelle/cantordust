@@ -1,7 +1,7 @@
 package resources;
 
 public class ColorClass extends ColorSource {
-    public ColorClass(GhidraSrc cantordust, byte[] data) {
+    public ColorClass(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "class";
     }

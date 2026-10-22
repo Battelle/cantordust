@@ -40,7 +40,7 @@ public class BitMapVisualizer extends Visualizer {
 
     private Image img;
 
-    public BitMapVisualizer(int windowSize, GhidraSrc cantordust) {
+    public BitMapVisualizer(int windowSize, Host cantordust) {
         super(windowSize, cantordust);
         MainInterface mainInterface = cantordust.getMainInterface();
         dataWidthSlider = mainInterface.widthSlider;

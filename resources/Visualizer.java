@@ -11,14 +11,14 @@ import javax.swing.JSlider;
 
 public abstract class Visualizer extends JPanel {
     protected MainInterface mainInterface;
-    protected GhidraSrc cantordust;
+    protected Host cantordust;
     protected double blockWidth;
     protected RangeSlider dataMacroSlider;
     protected RangeSlider dataMicroSlider;
     protected JSlider dataRangeSlider;
     protected ColorMapper colorMapper;
 
-    public Visualizer(int windowSize, GhidraSrc cantordust) {
+    public Visualizer(int windowSize, Host cantordust) {
         this.mainInterface = cantordust.getMainInterface();
         this.cantordust = cantordust;
         dataMacroSlider = mainInterface.macroSlider;
@@ -51,7 +51,7 @@ public abstract class Visualizer extends JPanel {
     }
 
     // Special constructor for initialization of plugin
-    public Visualizer(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
+    public Visualizer(int windowSize, Host cantordust, MainInterface mainInterface) {
         this.mainInterface = mainInterface;
         this.cantordust = cantordust;
         dataMacroSlider = mainInterface.macroSlider;

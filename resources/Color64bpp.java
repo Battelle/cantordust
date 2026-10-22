@@ -4,7 +4,7 @@ import java.awt.Color;
 public class Color64bpp extends ColorSource { /* see binvis - ColorHilbert class */
     Hilbert map;
     double step;
-    public Color64bpp(GhidraSrc cantordust, byte[] data) {
+    public Color64bpp(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "64bpp";
     }

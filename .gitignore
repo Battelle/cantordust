@@ -11,3 +11,10 @@ samples/
 make_template.py
 fetch_samples.py
 __pycache__/
+
+# Gradle output for the standalone build
+build/
+.gradle/
+ghidra-extension/build/
+ghidra-extension/.gradle/
+ghidra-extension/dist/

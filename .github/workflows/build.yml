@@ -1,0 +1,109 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  # The Run-workflow button, so a branch can be checked without merging it.
+  workflow_dispatch:
+
+jobs:
+  # The checks are main() programs that need an AWT toolkit but never show a
+  # window. They run on all three platforms; only Linux needs a virtual display.
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y xvfb && xvfb-run -a ./gradlew check --continue --console=plain
+      - if: runner.os != 'Linux'
+        run: ./gradlew check --continue --console=plain
+
+  # jpackage only builds for the platform it runs on, so one job per platform.
+  # The jar is the same everywhere; only the native bundle differs.
+  package:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            bundle: build/jpackage/*.dmg
+          - os: ubuntu-latest
+            bundle: build/jpackage/*.deb
+          - os: windows-latest
+            bundle: build/jpackage/Cantordust
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - run: ./gradlew jar jpackage --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cantordust-${{ matrix.os }}
+          path: |
+            build/libs/cantordust.jar
+            ${{ matrix.bundle }}
+
+  # The Ghidra Extension needs a real Ghidra install to build against - its
+  # buildExtension.gradle is applied from inside one - so the job downloads the
+  # release Ghidra was last verified with. The download is cached by version.
+  # Ghidra's extension build requires JDK 21, which is a different JDK from
+  # the standalone's 17 target; the two artifacts are built in separate jobs.
+  extension:
+    needs: check
+    runs-on: ubuntu-latest
+    env:
+      GHIDRA_VERSION: 12.1.4
+      GHIDRA_DATE: 20260921
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: Cache Ghidra
+        id: ghidra
+        uses: actions/cache@v4
+        with:
+          path: ghidra_install
+          key: ghidra-${{ env.GHIDRA_VERSION }}
+      - name: Download Ghidra
+        if: steps.ghidra.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL -o ghidra.zip "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${GHIDRA_VERSION}_build/ghidra_${GHIDRA_VERSION}_PUBLIC_${GHIDRA_DATE}.zip"
+          unzip -q ghidra.zip && mv "ghidra_${GHIDRA_VERSION}_PUBLIC" ghidra_install && rm ghidra.zip
+      - name: Build extension
+        working-directory: ghidra-extension
+        run: ../gradlew buildExtension -PGHIDRA_INSTALL_DIR="$GITHUB_WORKSPACE/ghidra_install" --console=plain
+      - name: Show what the zip carries
+        run: |
+          Z=$(ls ghidra-extension/dist/*.zip); echo "$Z"; unzip -l "$Z" | grep -E "Cantordust.jar|extension.properties|ghidra_scripts/Cantordust.java|ghidra_scripts/resources/templates/arm64|images/cantordust" | sed 's/^/  /'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cantordust-ghidra-extension
+          path: ghidra-extension/dist/*.zip
+
+  # A tag like v2.0.0 turns the artifacts into a GitHub release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [package, extension]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - run: |
+          cd artifacts
+          (cd cantordust-windows-latest && zip -qr ../Cantordust-windows.zip Cantordust)
+          cp cantordust-ubuntu-latest/cantordust.jar ./cantordust.jar
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
+            cantordust.jar Cantordust-windows.zip cantordust-ghidra-extension/*.zip \
+            cantordust-macos-latest/build/jpackage/*.dmg cantordust-ubuntu-latest/build/jpackage/*.deb
+        env: { GH_TOKEN: '${{ github.token }}' }

@@ -1,0 +1,163 @@
+// Builds the standalone Cantordust application.
+//
+// This does not change how the Ghidra script works: Ghidra still compiles
+// Cantordust.java and resources/ straight from this directory. The build exists
+// so the same sources can also be a jar that runs on its own, with a hex view in
+// place of the listing.
+//
+//     gradle jar          -> build/libs/cantordust.jar   (java -jar build/libs/cantordust.jar [file])
+//     gradle jpackage     -> build/jpackage/             (native app with a bundled runtime)
+//
+// The three Ghidra-only classes are left out, so the jar has no Ghidra
+// dependency and needs no Ghidra install to build or run.
+
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'org.battelle'
+version = '2.0.0'
+
+// Compile with whatever JDK is running Gradle, but emit Java 17 bytecode and
+// restrict the API to Java 17, so the result runs on the JDK Ghidra ships with.
+// A toolchain block would instead demand a JDK 17 *installation*, and fail on a
+// machine that only has a newer one.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass = 'resources.CantordustApp'
+    applicationName = 'cantordust'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['.']
+            include 'resources/**/*.java'
+            // Ghidra-only: the script entry point, the script base class, and
+            // the docking provider.
+            exclude 'resources/GhidraSrc.java'
+            exclude 'resources/CantordustProvider.java'
+        }
+        resources {
+            srcDirs = ['.']
+            // Bundled at the same relative paths the script reads from disk, so
+            // Host.openResource("resources/icons/x.png") works in both modes.
+            include 'resources/icons/**'
+            include 'resources/templates/**'
+        }
+    }
+}
+
+jar {
+    archiveBaseName = 'cantordust'
+    archiveVersion = ''
+    manifest {
+        attributes 'Main-Class': application.mainClass,
+                   'Implementation-Title': 'Cantordust',
+                   'Implementation-Version': project.version
+    }
+}
+
+// Native bundles with a bundled JRE, so standalone users need no Java install.
+// Requires JDK 14+ for the jpackage tool.
+tasks.register('jpackage', Exec) {
+    dependsOn jar
+    group = 'distribution'
+    description = 'Package the standalone app as a native bundle with its own runtime.'
+    def out = layout.buildDirectory.dir('jpackage').get().asFile
+    doFirst { out.mkdirs(); delete(out) }
+    // What jpackage can produce depends on what the machine has: a .dmg needs
+    // nothing extra on macOS, a .deb needs dpkg on Linux, an .msi needs WiX on
+    // Windows. app-image is the plain application directory and always works,
+    // so it is the Windows default; override with -PjpackageType=msi on a
+    // machine that has WiX. -PjpackageType=app-image works anywhere.
+    def type = project.findProperty('jpackageType') ?: defaultPackageType()
+    def args = ['jpackage',
+        '--type', type,
+        '--input', layout.buildDirectory.dir('libs').get().asFile.path,
+        '--main-jar', 'cantordust.jar',
+        '--main-class', application.mainClass.get(),
+        '--name', 'Cantordust',
+        '--app-version', project.version,
+        '--vendor', 'Battelle',
+        '--dest', out.path,
+        '--icon', platformIcon()]
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        args += ['--mac-package-identifier', 'org.battelle.cantordust']
+    }
+    commandLine args
+}
+
+def defaultPackageType() {
+    def os = System.getProperty('os.name').toLowerCase()
+    if (os.contains('mac'))   return 'dmg'
+    if (os.contains('win'))   return 'app-image'
+    return 'deb'
+}
+
+// ---- checks ---------------------------------------------------------------
+//
+// The tests are plain main() programs that exit non-zero on failure, run
+// against the built classes. They need an AWT toolkit but never show a window,
+// so on a headless Linux box run them under xvfb-run. Each generates or uses
+// portable inputs: a deterministic synthetic corpus and this JDK's own launcher
+// binary, so the same checks run on every platform.
+
+sourceSets {
+    test {
+        java {
+            srcDirs = ['test']
+            include 'resources/**/*.java'
+        }
+    }
+}
+
+// A script-level local is not visible inside a method in Gradle's Groovy, and
+// task closures run lazily from inside one, so the corpus location is a
+// project property rather than a def.
+ext.corpusDir = layout.buildDirectory.dir('corpus')
+
+tasks.register('corpus', JavaExec) {
+    group = 'verification'
+    description = 'Generate the deterministic test inputs.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'resources.Corpus'
+    args project.corpusDir.get().asFile.path
+    outputs.dir project.corpusDir
+}
+
+def check(String name, String cls, List<String> inputs, String about) {
+    tasks.register(name, JavaExec) {
+        group = 'verification'
+        description = about
+        dependsOn 'corpus'
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = cls
+        args inputs.collect { project.corpusDir.get().file(it).asFile.path }
+        jvmArgs '-Xmx2g'
+    }
+    tasks.named('check') { dependsOn name }
+}
+
+// The built-in test task looks for JUnit tests and, finding none, fails the
+// build. The checks below are the tests; there are no JUnit ones.
+tasks.named('test') { enabled = false }
+
+check('checkLayouts',    'resources.AllShots',    ['x86.template'],                 'Every visualization fits the panel at three window sizes.')
+check('checkJumps',      'resources.JumpTest',    ['x86.template'],                 'A click in each visualization resolves to bytes that match.')
+check('checkClassifier', 'resources.ClassFinal',  ['jdk-launcher.bin'],             'The classifier builds, labels every block, and survives use before it is built.')
+check('checkEntropy',    'resources.EntropyTest', ['composite.bin'],                'The entropy strip measures known regions correctly and in order.')
+
+// jpackage wants a platform-native icon and rejects anything else: .icns on
+// macOS, .ico on Windows, .png on Linux. All three are the same Ghidra icon.
+def platformIcon() {
+    def os = System.getProperty('os.name').toLowerCase()
+    if (os.contains('mac'))   return 'resources/icons/icon.icns'
+    if (os.contains('win'))   return 'resources/icons/icon.ico'
+    return 'resources/icons/icon.png'
+}

@@ -2,7 +2,7 @@ package resources;
 
 public class ColorEntropy extends ColorSource {
     protected Utils utils;
-    public ColorEntropy(GhidraSrc cantordust, byte[] data) {
+    public ColorEntropy(Host cantordust, byte[] data) {
         super(cantordust, data);
         this.type = "entropy";
         this.utils = new Utils(this.cantordust);

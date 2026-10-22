@@ -4,7 +4,7 @@ import java.awt.Color;
 
 public class BitMapColorMapper extends ColorMapper {
 
-    public BitMapColorMapper(GhidraSrc cantordust) {
+    public BitMapColorMapper(Host cantordust) {
     	super(cantordust);
         data = cantordust.getData();
     }

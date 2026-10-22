@@ -3,7 +3,7 @@ package resources;
 import java.awt.Color;
 
 public class EightBitPerPixelMapper extends ColorMapper {
-    EightBitPerPixelMapper(GhidraSrc cantordust) {
+    EightBitPerPixelMapper(Host cantordust) {
         super(cantordust);
     }
     public Color colorAtIndex(int index) {

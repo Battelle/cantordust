@@ -22,14 +22,14 @@ public class ByteCloudVisualizer extends Visualizer {
     /** Geometry of the last painted table, so a click can name the cell under it. */
     private float cellSize, originX, originY;
 
-    public ByteCloudVisualizer(int windowSize, GhidraSrc cantordust) {
+    public ByteCloudVisualizer(int windowSize, Host cantordust) {
         super(windowSize, cantordust);
         jump = new OffsetJump(cantordust);
         addClickToJump();
     }
 
     // Special constructor for initialization of plugin
-    public ByteCloudVisualizer(int windowSize, GhidraSrc cantordust, MainInterface mainInterface) {
+    public ByteCloudVisualizer(int windowSize, Host cantordust, MainInterface mainInterface) {
         super(windowSize, cantordust, mainInterface);
         jump = new OffsetJump(cantordust);
         addClickToJump();

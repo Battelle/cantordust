@@ -8,11 +8,11 @@ public class Linear extends Scurve{
     protected int width;
     protected int height;
     protected int size;
-    public Linear(GhidraSrc cantordust){
+    public Linear(Host cantordust){
         super(cantordust);
         this.type = "linear";
     }
-    public Linear(GhidraSrc cantordust, int dimension, double size) {
+    public Linear(Host cantordust, int dimension, double size) {
         super(cantordust);
         this.type = "linear";
         this.cantordust.cdprint("checking zig zag size.\n");
